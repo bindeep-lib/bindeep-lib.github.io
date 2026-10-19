@@ -448,3 +448,6 @@ skunk-html-output/
 
 # Claude
 .claude/
+
+# superpowers skill workspace (git-ignored scratch)
+.superpowers/
