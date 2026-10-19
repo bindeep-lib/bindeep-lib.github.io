@@ -34,7 +34,8 @@ let main _ =
     let articlePages, otherPages = linkedPages |> List.partition _.Date.IsSome
     let articles = articlePages |> List.sortByDescending _.Date
 
-    createIndexPage header footer articles
+    Config.languages |> List.iter (fun (lang, _) -> createIndexPage header footer lang articles)
+    createRootRedirect header footer
     createNotFoundPage header footer
     linkedPages |> List.iter (createPage header footer)
 

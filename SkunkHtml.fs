@@ -57,11 +57,16 @@ let generateFinalHtml (lang: string) (head: string) (header: string) (footer: st
     </html>
     """
 
-let head (titleSuffix: string) (description: string) (canonicalUrl: string) (ogType: string) =
+/// `lang` picks the localised meta values; `feedUrl` is passed in rather than
+/// derived here so every caller decides which feed its page advertises
+/// (`/zh/feed.xml`, `/en/feed.xml`, or the root `/feed.xml` kept for 404).
+/// A hard-coded feed URL per language would need a string rewrite afterwards,
+/// which fails silently the day the surrounding markup changes.
+let head (lang: string) (feedUrl: string) (titleSuffix: string) (description: string) (canonicalUrl: string) (ogType: string) =
     let fullTitle = Config.siteTitle + titleSuffix
 
     let seoMeta =
-        let desc = if String.IsNullOrWhiteSpace(description) then Config.siteDescription else description
+        let desc = if String.IsNullOrWhiteSpace(description) then Config.siteDescription lang else description
         let authorMeta =
             if String.IsNullOrWhiteSpace(Config.siteAuthor) then ""
             else $"""<meta name="author" content="{Xml.escape Config.siteAuthor}">"""
@@ -83,7 +88,7 @@ let head (titleSuffix: string) (description: string) (canonicalUrl: string) (ogT
         <meta name="twitter:title" content="{Xml.escape fullTitle}">
         <meta name="twitter:description" content="{Xml.escape desc}">
         <link rel="canonical" href="{canonicalUrl}">
-        <link rel="alternate" type="application/rss+xml" title="{Xml.escape Config.siteTitle}" href="{baseUrl}/feed.xml">
+        <link rel="alternate" type="application/rss+xml" title="{Xml.escape Config.siteTitle}" href="{feedUrl}">
         """
 
     headTemplate.Replace("{{site-title}}", Xml.escape fullTitle) + seoMeta
@@ -165,6 +170,23 @@ let loadPage (markdownFilePath: string) : Page =
       Slug = slug
       Translations = [] }
 
+/// Language switcher for a page. `links` are site-root-relative *without* a
+/// leading slash ("zh/decompiled-code.html", "zh/") — this function adds the
+/// slash, so passing "/zh/..." here would render the protocol-relative URL
+/// "//zh/..." and send the reader to the host "zh".
+/// Defined before `createPage`/`createIndexPage` because F# module-level `let`
+/// bindings are sequential: a helper used by both must precede both.
+let languageSwitcher (lang: string) (links: (string * string) list) =
+    let items =
+        links
+        |> List.sortBy fst
+        |> List.map (fun (code, link) ->
+            let active = if code = lang then " class=\"active\"" else ""
+            $"""<a{active} href="/{link}">{Config.langName code}</a>""")
+        |> String.concat " "
+
+    $"<nav class=\"lang-switch\">{items}</nav>"
+
 let createPage (header: string) (footer: string) (page: Page) =
     let canonicalUrl = $"{baseUrl}/{page.Link}"
     let markdownContent = File.ReadAllText(page.SourcePath)
@@ -179,24 +201,31 @@ let createPage (header: string) (footer: string) (page: Page) =
             articleHtml + giscusScript, "article"
 
     let finalHtmlContent =
-        generateFinalHtml page.Lang (head (" - " + page.Title) page.Description canonicalUrl ogType) header footer htmlContent highlightingScript
+        generateFinalHtml page.Lang (head page.Lang $"{baseUrl}/{page.Lang}/feed.xml" (" - " + page.Title) page.Description canonicalUrl ogType) header footer htmlContent highlightingScript
 
     printfn $"Processing {Path.GetFileName page.SourcePath} ->"
     Disk.writeFile (Path.Combine(Config.outputDir, page.Link)) finalHtmlContent
 
-let createIndexPage (header: string) (footer: string) (articles: Page list) =
-    let frontPageMarkdownFilePath = Path.Combine(Config.markdownDir, Config.frontPageMarkdownFileName)
+let createIndexPage (header: string) (footer: string) (lang: string) (articles: Page list) =
+    let frontPageMarkdownFilePath = Path.Combine(Config.markdownDir, Config.frontPageFileName lang)
 
     let frontPageContentHtml =
         if File.Exists(frontPageMarkdownFilePath) then
             printfn $"Processing {Path.GetFileName frontPageMarkdownFilePath} ->"
-            Markdown.ToHtml(File.ReadAllText(frontPageMarkdownFilePath))
+            // Fully qualified on purpose: opening `SkunkUtils.FrontMatter` here would make
+            // every unannotated `.Slug`/`.Lang` in this file an ambiguous-label error.
+            let fm = FrontMatter.parse (File.ReadAllText frontPageMarkdownFilePath)
+            Markdown.ToHtml fm.Body
         else
-            printfn $"Warning! File {Config.frontPageMarkdownFileName} does not exist! The main page will only contain blog entries, without a welcome message"
+            printfn $"Warning! File {Config.frontPageFileName lang} does not exist! The main page will only contain blog entries, without a welcome message"
             ""
 
+    // Only this language's articles appear on this language's front page: an
+    // article without an English translation must not show up under /en/.
+    let ownArticles = articles |> List.filter (fun a -> a.Lang = lang)
+
     let articleListHtml =
-        articles
+        ownArticles
         |> List.map (fun article ->
             let datePrefix =
                 match article.Date with
@@ -205,21 +234,51 @@ let createIndexPage (header: string) (footer: string) (articles: Page list) =
             $"""<li>{datePrefix}<a href="{article.Link}">{Xml.escape article.Title}</a></li>""")
         |> String.concat "\n"
 
+    // The two language homes, so a reader landing on /zh/ can reach /en/ and back.
+    let homeLinks = Config.languages |> List.map (fun (code, _) -> code, $"{code}/")
+    let switcher = languageSwitcher lang homeLinks
+
     let content =
         $"""
         {frontPageContentHtml}
+        {switcher}
         <section class="publications">
-            <h2>{Config.blogEntriesHeading}</h2>
+            <h2>{Config.blogEntriesHeading lang}</h2>
             <ul>
             {articleListHtml}
             </ul>
         </section>
         """
 
-    let canonicalUrl = baseUrl + "/"
-    let frontPageHtmlContent = generateFinalHtml Config.defaultLang (head "" Config.siteDescription canonicalUrl "website") header footer content highlightingScript
+    let canonicalUrl = $"{baseUrl}/{lang}/"
+    let feedUrl = $"{baseUrl}/{lang}/feed.xml"
+    let baseTag = $"""<base href="{baseUrl}/">"""
+    let headContent = baseTag + head lang feedUrl "" canonicalUrl "website"
 
-    Disk.writeFile (Path.Combine(Config.outputDir, "index.html")) frontPageHtmlContent
+    let finalHtml = generateFinalHtml lang headContent header footer content highlightingScript
+
+    printfn $"Processing index.{lang} ->"
+    Disk.writeFile (Path.Combine(Config.outputDir, lang, "index.html")) finalHtml
+
+/// The site root is a redirect to the default language, not a copy of an index:
+/// a duplicate home page at `/` would compete with `/zh/` in search results.
+/// The <base> tag keeps the header's absolute links and assets working here.
+let createRootRedirect (header: string) (footer: string) =
+    let target = $"/{Config.defaultLang}/"
+
+    let content =
+        $"""
+        <p>Redirecting to <a href="{target}">{target}</a>&hellip;</p>
+        """
+
+    let headContent =
+        $"""<meta http-equiv="refresh" content="0; url={target}">
+<link rel="canonical" href="{baseUrl}{target}">"""
+
+    let finalHtml = generateFinalHtml Config.defaultLang headContent header footer content highlightingScript
+
+    printfn "Processing root redirect ->"
+    Disk.writeFile (Path.Combine(Config.outputDir, "index.html")) finalHtml
 
 /// Auto-generated 404 page, served by GitHub Pages for any missing URL.
 /// The <base> tag makes relative links work at any path depth. Written before
@@ -228,12 +287,12 @@ let createNotFoundPage (header: string) (footer: string) =
     let content =
         $"""
         <h1>404</h1>
-        <p>{Config.notFoundMessage}</p>
-        <p><a href="index.html">{Config.notFoundBackText}</a></p>
+        <p>{Config.notFoundMessage Config.defaultLang}</p>
+        <p><a href="index.html">{Config.notFoundBackText Config.defaultLang}</a></p>
         """
 
     let baseTag = $"""<base href="{baseUrl}/">"""
-    let headContent = baseTag + head (" - " + Config.notFoundTitle) "" $"{baseUrl}/404.html" "website"
+    let headContent = baseTag + head Config.defaultLang $"{baseUrl}/feed.xml" (" - " + (Config.notFoundTitle Config.defaultLang)) "" $"{baseUrl}/404.html" "website"
     let finalHtmlContent = generateFinalHtml Config.defaultLang headContent header footer content highlightingScript
 
     Disk.writeFile (Path.Combine(Config.outputDir, "404.html")) finalHtmlContent
@@ -327,7 +386,7 @@ let linkTranslations (pages: Page list) =
         |> Map.ofList
 
     pages
-    |> List.map (fun page ->
+    |> List.map (fun (page: Page) ->
         let translations =
             bySlug
             |> Map.tryFind page.Slug
