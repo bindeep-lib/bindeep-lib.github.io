@@ -313,3 +313,29 @@ let createSitemap (pages: Page list) =
         + "</urlset>"
 
     Disk.writeFile (Path.Combine(Config.outputDir, "sitemap.xml")) sitemap
+
+// --- Translation Linking ---
+
+/// Pair translations by slug. A page cannot know its siblings while it is being
+/// loaded, so this is a second pass over the complete page list.
+/// A slug with only one language is a warning, not an error: a blog may
+/// legitimately have posts in one language only.
+let linkTranslations (pages: Page list) =
+    let bySlug =
+        pages
+        |> List.groupBy _.Slug
+        |> Map.ofList
+
+    pages
+    |> List.map (fun page ->
+        let translations =
+            bySlug
+            |> Map.tryFind page.Slug
+            |> Option.defaultValue []
+            |> List.map (fun p -> p.Lang, p.Link)
+
+        match translations with
+        | [ _ ] -> printfn $"Warning! No translation found for slug '{page.Slug}' ({page.Lang} only)"
+        | _ -> ()
+
+        { page with Translations = translations })

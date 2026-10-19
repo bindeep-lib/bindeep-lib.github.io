@@ -23,18 +23,20 @@ let main _ =
         |> Array.map loadPage
         |> Array.toList
 
-    pages
+    let linkedPages = linkTranslations pages
+
+    linkedPages
     |> List.countBy _.Link
     |> List.filter (fun (_, count) -> count > 1)
     |> List.iter (fun (link, _) ->
-        printfn $"Warning! Multiple pages share the same title, so they all end up as {link} - only one will survive")
+        printfn $"Warning! Multiple pages share the same link, so they all end up as {link} - only one will survive")
 
-    let articlePages, otherPages = pages |> List.partition _.Date.IsSome
+    let articlePages, otherPages = linkedPages |> List.partition _.Date.IsSome
     let articles = articlePages |> List.sortByDescending _.Date
 
     createIndexPage header footer articles
     createNotFoundPage header footer
-    pages |> List.iter (createPage header footer)
+    linkedPages |> List.iter (createPage header footer)
 
     createRssFeed articles
     createSitemap (articles @ otherPages)
