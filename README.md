@@ -21,9 +21,20 @@ Write Markdown, push to GitHub, your site updates automatically.
 
 1. **Fork** this repository
 2. Go to **Settings > Pages > Source: GitHub Actions**
-3. Your blog is live at `https://YOUR-USERNAME.github.io/skunk-html/`
+3. If you renamed the fork to `<your-username>.github.io`, your blog is live at `https://YOUR-USERNAME.github.io/`. Otherwise it is a project page at `https://YOUR-USERNAME.github.io/skunk-html/` and `Config.siteBaseUrl` must include the repository name.
 
-To publish a post: add a Markdown file to the `markdown-blog/` folder. The file name **is the date** - name it like `2025-03-24.md` and start the file with a `# Title` heading. The title comes from the heading, the date comes from the file name. Push. Done.
+To publish a post: add a Markdown file to the `markdown-blog/` folder. The file name carries the date and the language - name it like `2025-03-24.zh.md` and start the file with a `# Title` heading, optionally preceded by front matter:
+
+```markdown
+---
+lang: zh
+slug: my-post-title
+---
+
+# Title
+```
+
+`lang` must be one of the codes in `Config.languages`. `slug` is the URL identifier: **a post and its translations share the same slug**, which is what pairs them into a language switcher and matching `hreflang` alternates. Both fields are optional - without front matter the language falls back to the file-name suffix and then to `Config.defaultLang`, and the slug is derived from the title.
 
 ## Features
 
@@ -44,15 +55,18 @@ To publish a post: add a Markdown file to the `markdown-blog/` folder. The file 
 Edit `Config.fs` - you only need to change the values in quotes:
 
 ```fsharp
+let defaultLang = "zh"
+let languages : (string * string) list = [ "zh", "中文"; "en", "English" ]
 let siteTitle = "My Blog"
-let siteDescription = "A blog powered by SkunkHTML"
-let siteBaseUrl = "https://YOUR-USERNAME.github.io/skunk-html"  // No trailing slash
-let siteLanguage = "en"
+let siteDescription lang = str lang "我的博客" "A blog powered by SkunkHTML"
+let siteBaseUrl = "https://YOUR-USERNAME.github.io"  // No trailing slash
 let siteAuthor = "Your Name"
-let siteImage = "assets/avatar.jpg"  // Preview image for social shares
+let siteImage = ""  // Preview image for social shares; "" disables og:image
 ```
 
-You don't need to know F# - just edit the text between the quotation marks. The same file also contains the interface texts (like the "blog entries" heading and the 404 page messages) - translate them if your blog is not in English.
+`languages` is the whole set of languages the site publishes; each one gets its own home page at `/{code}/` and its own RSS feed at `/{code}/feed.xml`. `defaultLang` decides which one the bare site root redirects to, and also serves `/feed.xml` so feed readers that only auto-discover the root keep working.
+
+The remaining bindings are the interface texts (`blogEntriesHeading`, `publishedOnText`, the 404 page messages, and so on). Each takes a `lang` and picks between a Chinese and an English string via `Config.str`.
 
 **Base URL examples** - set `siteBaseUrl` to match where your site is hosted:
 - GitHub project page: `https://YOUR-USERNAME.github.io/skunk-html`
@@ -75,9 +89,22 @@ All themes respect `prefers-color-scheme` - they look great in both light and da
 
 ### Content structure
 
-- **Blog posts**: Markdown files in `markdown-blog/` whose names start with a digit. The file name is the publication date (e.g. `2025-03-24.md`). The post title comes from the first `# Heading` inside the file.
-- **Other pages**: Markdown files in `markdown-blog/` that don't start with a digit (e.g. `about.md`, `featured.md`)
-- **Front page**: `markdown-blog/index.md` - optional welcome content displayed above the post list
+- **Blog posts**: Markdown files in `markdown-blog/` whose names start with a digit. The file name is the publication date plus the language (e.g. `2025-03-24.zh.md`). The post title comes from the first `# Heading` inside the file.
+- **Other pages**: Markdown files in `markdown-blog/` that don't start with a digit (e.g. `about.en.md`, `featured.zh.md`)
+- **Front page**: `markdown-blog/index.{lang}.md`, one per language - optional welcome content displayed above that language's post list. Missing ones produce a warning and a bare post list.
+
+### URL layout
+
+| URL | Content |
+|---|---|
+| `/` | Redirect to `/{defaultLang}/`; not listed in the sitemap |
+| `/{lang}/` | Home page for that language |
+| `/{lang}/{slug}.html` | A post or page; a post and its translations share the slug |
+| `/{lang}/feed.xml` | RSS containing only that language's posts |
+| `/feed.xml` | Mirror of the default language's feed, for reader auto-discovery |
+| `/css`, `/scripts`, `/images`, `/assets` | Site-root resources |
+
+Every page carries `<base href="{siteBaseUrl}/">`, which is why page assets are written as relative paths (`css/styles.css`) yet resolve from any `/{lang}/` depth. It also means navigation links in `html/header.html` must be absolute (`/{{lang}}/links.html`) - a relative `index.html` would resolve to the root redirect.
 
 ### HTML fragments
 
