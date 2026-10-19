@@ -33,6 +33,20 @@ let private giscusScript =
     |> Disk.readFile
 
 let generateFinalHtml (lang: string) (head: string) (header: string) (footer: string) (content: string) (script: string) =
+    // The header template carries {{lang}} placeholders because it is a static
+    // file that cannot know which language is being rendered. A placeholder that
+    // stops matching would otherwise sail through and print a literal
+    // "{{lang}}" in the navigation, so a leftover brace fails the build instead.
+    let renderedHeader =
+        header
+        |> fun t -> t.Replace("{{lang}}", lang)
+        |> fun t -> t.Replace("{{site-name}}", Config.siteTitle)
+        |> fun t -> t.Replace("{{home-text}}", Config.str lang "首页" "Home")
+        |> fun t -> t.Replace("{{links-text}}", Config.str lang "链接" "Links")
+
+    if renderedHeader.Contains "{{" then
+        failwithf "Unreplaced placeholder in html/header.html while rendering lang '%s'. Template contains: %s" lang header
+
     $"""
     <!DOCTYPE html>
     <html lang="{lang}" data-color-mode="user">
@@ -41,7 +55,7 @@ let generateFinalHtml (lang: string) (head: string) (header: string) (footer: st
     </head>
     <body>
         <header>
-            {header}
+            {renderedHeader}
         </header>
         <main>
             {content}
@@ -91,7 +105,14 @@ let head (lang: string) (feedUrl: string) (titleSuffix: string) (description: st
         <link rel="alternate" type="application/rss+xml" title="{Xml.escape Config.siteTitle}" href="{feedUrl}">
         """
 
-    headTemplate.Replace("{{site-title}}", Xml.escape fullTitle) + seoMeta
+    let renderedHead = headTemplate.Replace("{{site-title}}", Xml.escape fullTitle)
+
+    // Same reasoning as the header guard: a template placeholder that stops
+    // matching would otherwise be published verbatim into every page's <title>.
+    if renderedHead.Contains "{{" then
+        failwith "Unreplaced placeholder in html/head.html. Template contains: " + headTemplate
+
+    renderedHead + seoMeta
 
 let private isArticle (file: string) =
     Char.IsDigit(Path.GetFileName(file)[0])
@@ -310,7 +331,7 @@ let createNotFoundPage (header: string) (footer: string) =
         $"""
         <h1>404</h1>
         <p>{Config.notFoundMessage Config.defaultLang}</p>
-        <p><a href="index.html">{Config.notFoundBackText Config.defaultLang}</a></p>
+        <p><a href="/{Config.defaultLang}/">{Config.notFoundBackText Config.defaultLang}</a></p>
         """
 
     let baseTag = $"""<base href="{baseUrl}/">"""
