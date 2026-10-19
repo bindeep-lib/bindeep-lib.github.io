@@ -7,6 +7,10 @@ module Disk =
         if File.Exists(path) then File.ReadAllText(path) else ""
 
     let writeFile (path: string) (content: string) =
+        // Language-prefixed links (zh/, en/) need directories that do not exist yet.
+        // CreateDirectory on an existing directory is a no-op and does not throw.
+        let dir = Path.GetDirectoryName(path)
+        if not (String.IsNullOrEmpty dir) then Directory.CreateDirectory dir |> ignore
         File.WriteAllText(path, content)
         printfn $"Generated: {Path.GetFileName path} -> {path}\n"
 
@@ -29,9 +33,18 @@ module Url =
     open System.Text.RegularExpressions
 
     let toUrlFriendly (input: string) =
-        input.ToLowerInvariant()
-        |> fun text -> Regex.Replace(text, @"[^\w\s]", "") // Remove all non-alphanumeric characters
-        |> fun text -> Regex.Replace(text, @"\s+", "-") // Replace spaces with hyphens
+        let slug =
+            input.ToLowerInvariant()
+            |> fun text -> Regex.Replace(text, @"[^\w\s]", "") // Remove all non-alphanumeric characters
+            |> fun text -> Regex.Replace(text, @"\s+", "-") // Replace spaces with hyphens
+
+        // A title made only of punctuation (e.g. "???") normalises to ""; returning it
+        // would produce a dotfile link like ".html". Fall back to a usable slug.
+        if String.IsNullOrWhiteSpace slug then
+            let fallback = Regex.Replace(input.ToLowerInvariant(), @"\s+", "-")
+            if String.IsNullOrWhiteSpace fallback then "untitled" else fallback
+        else
+            slug
 
     /// Ensure base URL has no trailing slash
     let normalizeBaseUrl (url: string) =
