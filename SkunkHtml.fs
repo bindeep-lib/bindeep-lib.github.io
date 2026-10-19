@@ -100,6 +100,16 @@ let private splitFileName (file: string) =
     else
         stem, ""
 
+/// Front matter is author-controlled text that ends up in `Link`, and `Link` is
+/// handed to `Path.Combine(outputDir, page.Link)` — so it must be reduced to a
+/// single inert path segment before it is ever joined to a directory. A slug that
+/// already is one (word characters and hyphens, e.g. "my-post") is kept verbatim so
+/// authors get the URL they asked for; anything else — "..", "/", "?", whitespace —
+/// goes through the same normaliser a title goes through.
+let private safeSlug (raw: string) =
+    let inertSegment (s: string) = System.Text.RegularExpressions.Regex.IsMatch(s, @"\A[\w-]+\z")
+    if inertSegment raw then raw else Url.toUrlFriendly raw
+
 let loadPage (markdownFilePath: string) : Page =
     let raw = File.ReadAllText(markdownFilePath)
     let fm = FrontMatter.parse raw
@@ -124,13 +134,19 @@ let loadPage (markdownFilePath: string) : Page =
 
     // front-matter wins; otherwise filename suffix; otherwise the default language.
     let lang =
+        // Only a configured language may become a directory; "fr" or a traversal
+        // payload in `lang:` must not create a bogus folder next to zh/ and en/.
+        let isConfigured (code: string) =
+            Config.languages |> List.exists (fun (configured, _) -> configured = code)
         fm.Lang
-        |> Option.orElse (if suffixLang = "zh" || suffixLang = "en" then Some suffixLang else None)
+        |> Option.filter isConfigured
+        |> Option.orElse (if isConfigured suffixLang then Some suffixLang else None)
         |> Option.defaultValue Config.defaultLang
 
     // No front-matter slug: derive from title, else from the file name (never empty).
     let slug =
         fm.Slug
+        |> Option.map safeSlug
         |> Option.filter (fun s -> not (String.IsNullOrWhiteSpace s))
         |> Option.defaultWith (fun () ->
             let fromTitle = Url.toUrlFriendly title

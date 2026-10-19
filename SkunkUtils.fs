@@ -79,7 +79,10 @@ module MarkdownUtils =
 
 /// Front matter is a leading `---` delimited block of `key: value` lines.
 /// Tolerates CRLF, surrounding whitespace, and missing/garbage blocks by
-/// falling back to "no front matter" so existing pages keep working.
+/// falling back to "no front matter" so existing pages keep working. A block
+/// only counts as front matter when it is closed by a second `---` *and* holds
+/// at least one `key: value` line; anything else is treated as the more likely
+/// case, a document that merely opens with a horizontal rule.
 module FrontMatter =
     type Result =
         { Lang: string option
@@ -91,22 +94,31 @@ module FrontMatter =
         match first with
         | Some line when line.Trim() = "---" ->
             let rest = lines |> Array.skipWhile (fun l -> l <> line)
-            let body =
-                rest
-                |> Array.skip 1
-                |> Array.takeWhile (fun l -> l.Trim() <> "---")
-            let after = rest |> Array.skip (body.Length + 2)
-            let fields =
-                body
-                |> Array.choose (fun l ->
-                    match l.IndexOf(':') with
-                    | -1 -> None
-                    | i -> Some(l.Substring(0, i).Trim().ToLowerInvariant(), l.Substring(i + 1).Trim())))
-                |> Map.ofList
-            let get k = fields |> Map.tryFind k
-            let lang = get "lang" |> Option.filter (fun v -> v <> "")
-            let slug = get "slug" |> Option.filter (fun v -> v <> "")
-            Some(lang, slug, String.Join("\n", after))
+            let inner = rest |> Array.skip 1
+            // An unterminated `---` must not consume the rest of the file: taking
+            // every remaining line would leave an empty Body and render the whole
+            // article as a blank page, with nothing in the build log to explain it.
+            match inner |> Array.tryFindIndex (fun l -> l.Trim() = "---") with
+            | None -> None
+            | Some closingIndex ->
+                let body = inner |> Array.take closingIndex
+                let after = inner |> Array.skip (closingIndex + 1)
+                let fields =
+                    body
+                    |> Array.choose (fun l ->
+                        match l.IndexOf(':') with
+                        | -1 -> None
+                        | i -> Some(l.Substring(0, i).Trim().ToLowerInvariant(), l.Substring(i + 1).Trim())))
+                    |> Map.ofList
+                let get k = fields |> Map.tryFind k
+                // A closed block holding no `key: value` line is a horizontal rule
+                // that happens to be followed by another one, not front matter.
+                if Map.isEmpty fields then
+                    None
+                else
+                    let lang = get "lang" |> Option.filter (fun v -> v <> "")
+                    let slug = get "slug" |> Option.filter (fun v -> v <> "")
+                    Some(lang, slug, String.Join("\n", after))
         | _ -> None
 
     let parse (content: string) =
