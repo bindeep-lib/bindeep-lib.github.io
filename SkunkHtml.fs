@@ -110,7 +110,7 @@ let head (lang: string) (feedUrl: string) (titleSuffix: string) (description: st
     // Same reasoning as the header guard: a template placeholder that stops
     // matching would otherwise be published verbatim into every page's <title>.
     if renderedHead.Contains "{{" then
-        failwith "Unreplaced placeholder in html/head.html. Template contains: " + headTemplate
+        failwithf "Unreplaced placeholder in html/head.html. Template contains: %s" headTemplate
 
     renderedHead + seoMeta
 
