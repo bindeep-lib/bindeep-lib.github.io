@@ -149,3 +149,74 @@ ink 主题设 `--font-family: Georgia, "Noto Serif", serif`，`styles.css:64` �
 - 不引入 JS、CSS 框架、web font
 - 不改 `verify.sh` 的 URL 集合
 - 不做首页图片/头像（用户已明确不放作者头像）
+
+## 10. 实施记录（commit `dcd335c`）
+
+### 已确认的两项
+
+① 表格强制无衬线、② 作品卡放指标并标注口径 —— 均按第 7 节的推荐执行。
+
+### 实施中发现、已当场处理的三件事
+
+**① `bindeep.cn` 不是这个博客，是产品站**
+
+排查线上产物时才发现：`https://bindeep.cn/` 返回的是
+**binforge · 智能反编译与漏洞分析平台**（`<title>` 与 meta description 确认），
+与本博客（`https://bindeep-lib.github.io/`）是两个站点，且**产品站内没有任何链接指向博客**。
+
+影响：原首页写「bindeep 实验室 · bindeep.cn 的实验性质博客」在事实上容易误读。
+好在实验室方向「二进制分析和漏洞挖掘」与 binforge 的自我描述几乎逐字重合，
+定位因此更自洽：实验室 → 工具 bindec → 产品 binforge（bindeep.cn）→ 博客记录过程。
+
+**② 作品卡不能挂 bindec 的 GitHub 链接**
+
+全站内容里唯一的 GitHub 地址是测试数据集 `bindeep-lib/DCB`，
+**没有 bindec 仓库的地址**。编一个 URL 挂上去，若 404 反而伤可信度。
+故作品卡链接改为已验证真实的 `bindeep.cn`，并把「测试数据集已开源」写进指标行
+（对潜在合作方而言，benchmark 开源是比产品链接更强的可信度信号）。
+
+> 若确实要把 bindec 仓库挂上去，需要仓库地址，补一行即可。
+
+**③ 对比数字改用对手「修补后」的列**
+
+初稿依据的是记忆中的「对手 0% / 17.2%」。核对文章后发现那只是
+**原样编译**那一列；完整表格是：
+
+| | ① 原样编译 | ② 修补后再编译 |
+|---|---|---|
+| IDA Pro 9.1 | 0 / 128 | **57 / 128** |
+| Ghidra 12.1.4 | 22 / 128 | **44 / 128** |
+| **bindec** | **113 / 128** | 不需要修补 |
+
+首页引用**修补后**的 57 与 44 —— 那是对手的上限，也是唯一站得住的对比。
+（引用 0 和 22 会显得我们在挑软柿子，而这篇文章的立场恰恰是不这么做。）
+
+### 计划外新增：blockquote 取消斜体
+
+ink 主题给 `blockquote` 加了 `font-style: italic`。文章里有 **69 处 blockquote**，
+逐条看过，全部是**加粗的重点句**（「这不是能力高低，是产品定位不同」这类）。
+浏览器对中文斜体是合成倾斜，既更难读，又恰好落在最该被记住的句子上。
+
+因此在 ink 之上追加 `blockquote, blockquote p { font-style: normal; }`。
+**这是第 7 节没有的一项**，属实施中新增，需用户确认是否保留。
+
+### 探针：取消
+
+原计划做一次独立的 `<div>` 探针页。实际未做 —— 改用**线上 `<img>` 的既有输出**作为证据：
+线上 `/zh/` 里 `<img src="images/wechat-qr.jpg" alt="微信" width="180">` 连 `width` 属性
+都被原样保留，说明 FSharp.Formatting 对 raw HTML 是逐字透传；`<div>` 属同一类 HTML block。
+验证改为部署后直接 curl 首页，检查 `class="work-card"` 等标记是否原样出现。
+探针页 `markdown-blog/probe.zh.md` 已删除，未进入任何一次提交。
+
+### 实际改动的文件
+
+| 文件 | 改动 |
+|---|---|
+| `markdown-blog/index.zh.md` / `index.en.md` | 重写（四区块结构） |
+| `css/tweaks.css` | ← `themes/theme-ink.css`，另追加 124 行站点样式与两处可读性修正 |
+| `html/header.html` | 去掉「首页」自指项；语言切换器进 nav |
+| `SkunkHtml.fs` | `generateFinalHtml` 多接 `switcher` 参数；新增 `homeLanguageSwitcher` 供首页/重定向/404 共用 |
+
+`Program.fs` **无需改动** —— `createIndexPage` 与 `createPage` 各自已经算好了
+正确的切换器数据（前者 `homeLinks`，后者 `page.Translations`），原先只是都塞进了
+`<main>` 的 `content`；现在把它作为参数交给 `generateFinalHtml` 即可。
