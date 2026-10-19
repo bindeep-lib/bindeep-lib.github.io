@@ -41,7 +41,13 @@ module Url =
         // A title made only of punctuation (e.g. "???") normalises to ""; returning it
         // would produce a dotfile link like ".html". Fall back to a usable slug.
         if String.IsNullOrWhiteSpace slug then
-            let fallback = Regex.Replace(input.ToLowerInvariant(), @"\s+", "-")
+            // The primary path drops non-word chars, but the fallback must not: keeping
+            // them would let a title like "../../.." escape the output directory and a
+            // title like "???" break the href. Map every non-word char to a hyphen.
+            let fallback =
+                Regex.Replace(input.ToLowerInvariant(), @"[^\w\s]", "-")
+                |> fun text -> Regex.Replace(text, @"-+", "-") // Collapse hyphen runs
+                |> fun text -> Regex.Replace(text, @"^-+|-+$", "") // Trim leading/trailing hyphens
             if String.IsNullOrWhiteSpace fallback then "untitled" else fallback
         else
             slug
