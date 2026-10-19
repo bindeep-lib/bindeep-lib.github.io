@@ -201,6 +201,13 @@ let loadPage (markdownFilePath: string) : Page =
 /// "//zh/..." and send the reader to the host "zh".
 /// Defined before `createPage`/`createIndexPage` because F# module-level `let`
 /// bindings are sequential: a helper used by both must precede both.
+/// The wrapper is a `<span>`, not a `<nav>`: this fragment is rendered into
+/// html/header.html, which is itself a `<nav>`, and the HTML content model
+/// forbids a `<nav>` descendant of `<nav>`. Browsers do not reparent it, so the
+/// mistake renders identically — it just produces markup that does not validate
+/// and that assistive tech may read as two separate navigation landmarks.
+/// A span is also what the surrounding `<li>` expects, since `nav ul li` is
+/// `display: inline-block` and the switcher has to sit inline with the links.
 let languageSwitcher (lang: string) (links: (string * string) list) =
     let items =
         links
@@ -210,7 +217,7 @@ let languageSwitcher (lang: string) (links: (string * string) list) =
             $"""<a{active} href="/{link}">{Config.langName code}</a>""")
         |> String.concat " "
 
-    $"<nav class=\"lang-switch\">{items}</nav>"
+    $"<span class=\"lang-switch\">{items}</span>"
 
 /// The switcher for pages that have no article translations to point at: it
 /// offers the other language's *home*. Shared by the home pages, the root
