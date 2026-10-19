@@ -17,7 +17,9 @@ let main _ =
 
     let pages =
         Directory.GetFiles(Config.markdownDir, "*.md")
-        |> Array.filter (fun file -> Path.GetFileName(file) <> Config.frontPageMarkdownFileName)
+        |> Array.filter (fun file ->
+            let name = Path.GetFileName file
+            not (Config.languages |> List.exists (fun (code, _) -> name = Config.frontPageFileName code)))
         |> Array.map loadPage
         |> Array.toList
 

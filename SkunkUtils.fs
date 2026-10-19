@@ -76,3 +76,41 @@ module MarkdownUtils =
         |> fun s -> Regex.Replace(s, @"[*_]{1,3}", "")                // bold/italic markers
         |> fun s -> Regex.Replace(s, @"`([^`]+)`", "$1")              // inline code
         |> fun s -> s.Trim()
+
+/// Front matter is a leading `---` delimited block of `key: value` lines.
+/// Tolerates CRLF, surrounding whitespace, and missing/garbage blocks by
+/// falling back to "no front matter" so existing pages keep working.
+module FrontMatter =
+    type Result =
+        { Lang: string option
+          Slug: string option
+          Body: string }
+
+    let private parseBlock (lines: string array) =
+        let first = lines |> Array.tryFind (fun l -> not (String.IsNullOrWhiteSpace l))
+        match first with
+        | Some line when line.Trim() = "---" ->
+            let rest = lines |> Array.skipWhile (fun l -> l <> line)
+            let body =
+                rest
+                |> Array.skip 1
+                |> Array.takeWhile (fun l -> l.Trim() <> "---")
+            let after = rest |> Array.skip (body.Length + 2)
+            let fields =
+                body
+                |> Array.choose (fun l ->
+                    match l.IndexOf(':') with
+                    | -1 -> None
+                    | i -> Some(l.Substring(0, i).Trim().ToLowerInvariant(), l.Substring(i + 1).Trim())))
+                |> Map.ofList
+            let get k = fields |> Map.tryFind k
+            let lang = get "lang" |> Option.filter (fun v -> v <> "")
+            let slug = get "slug" |> Option.filter (fun v -> v <> "")
+            Some(lang, slug, String.Join("\n", after))
+        | _ -> None
+
+    let parse (content: string) =
+        let lines = content.Split('\n') |> Array.map (fun l -> l.TrimEnd('\r'))
+        match parseBlock lines with
+        | Some(lang, slug, body) -> { Lang = lang; Slug = slug; Body = body }
+        | None -> { Lang = None; Slug = None; Body = content }

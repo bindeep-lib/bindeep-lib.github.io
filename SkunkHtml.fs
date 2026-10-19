@@ -13,7 +13,10 @@ type Page =
       Title: string
       Link: string
       Description: string
-      Date: string option }
+      Date: string option
+      Lang: string
+      Slug: string
+      Translations: (string * string) list }
 
 let private baseUrl = Url.normalizeBaseUrl Config.siteBaseUrl
 
@@ -29,10 +32,10 @@ let private giscusScript =
     Path.Combine(Config.htmlDir, "script_giscus.html")
     |> Disk.readFile
 
-let generateFinalHtml (head: string) (header: string) (footer: string) (content: string) (script: string) =
+let generateFinalHtml (lang: string) (head: string) (header: string) (footer: string) (content: string) (script: string) =
     $"""
     <!DOCTYPE html>
-    <html lang="{Config.siteLanguage}" data-color-mode="user">
+    <html lang="{lang}" data-color-mode="user">
     <head>
         {head}
     </head>
@@ -88,35 +91,63 @@ let head (titleSuffix: string) (description: string) (canonicalUrl: string) (ogT
 let private isArticle (file: string) =
     Char.IsDigit(Path.GetFileName(file)[0])
 
+/// "2026-10-19.zh.md" -> ("2026-10-19", "zh")
+let private splitFileName (file: string) =
+    let stem = Path.GetFileNameWithoutExtension(file)   // "2026-10-19.zh"
+    let lastDot = stem.LastIndexOf('.')
+    if lastDot > 0 then
+        stem.Substring(0, lastDot), stem.Substring(lastDot + 1).ToLowerInvariant()
+    else
+        stem, ""
+
 let loadPage (markdownFilePath: string) : Page =
-    let lines = File.ReadAllLines(markdownFilePath)
+    let raw = File.ReadAllText(markdownFilePath)
+    let fm = FrontMatter.parse raw
+    let lines = fm.Body.Split('\n')
 
     let title =
         lines
-        |> Array.tryFind _.StartsWith("# ")
+        |> Array.tryFind (fun l -> l.StartsWith("# "))
         |> Option.map _.TrimStart('#').Trim()
-        |> Option.defaultValue Config.untitledPageTitle
+        |> Option.defaultValue (Config.untitledPageTitle Config.defaultLang)
 
     let description =
         lines
-        |> Array.filter (fun line -> not (String.IsNullOrWhiteSpace(line)))
+        |> Array.filter (fun line -> not (String.IsNullOrWhiteSpace line))
         |> Array.filter (fun line -> not (line.StartsWith("#")))
         |> Array.tryHead
         |> Option.defaultValue ""
         |> MarkdownUtils.stripMarkdownSyntax
         |> fun s -> if s.Length > 160 then s[..159] + "..." else s
 
+    let baseName, suffixLang = splitFileName markdownFilePath
+
+    // front-matter wins; otherwise filename suffix; otherwise the default language.
+    let lang =
+        fm.Lang
+        |> Option.orElse (if suffixLang = "zh" || suffixLang = "en" then Some suffixLang else None)
+        |> Option.defaultValue Config.defaultLang
+
+    // No front-matter slug: derive from title, else from the file name (never empty).
+    let slug =
+        fm.Slug
+        |> Option.filter (fun s -> not (String.IsNullOrWhiteSpace s))
+        |> Option.defaultWith (fun () ->
+            let fromTitle = Url.toUrlFriendly title
+            if String.IsNullOrWhiteSpace fromTitle then Url.toUrlFriendly baseName
+            else fromTitle)
+
     let date =
-        if isArticle markdownFilePath then
-            Some(Path.GetFileNameWithoutExtension(markdownFilePath))
-        else
-            None
+        if isArticle markdownFilePath then Some baseName else None
 
     { SourcePath = markdownFilePath
       Title = title
-      Link = Url.toUrlFriendly title + ".html"
+      Link = $"{lang}/{slug}.html"
       Description = description
-      Date = date }
+      Date = date
+      Lang = lang
+      Slug = slug
+      Translations = [] }
 
 let createPage (header: string) (footer: string) (page: Page) =
     let canonicalUrl = $"{baseUrl}/{page.Link}"
@@ -132,7 +163,7 @@ let createPage (header: string) (footer: string) (page: Page) =
             articleHtml + giscusScript, "article"
 
     let finalHtmlContent =
-        generateFinalHtml (head (" - " + page.Title) page.Description canonicalUrl ogType) header footer htmlContent highlightingScript
+        generateFinalHtml page.Lang (head (" - " + page.Title) page.Description canonicalUrl ogType) header footer htmlContent highlightingScript
 
     printfn $"Processing {Path.GetFileName page.SourcePath} ->"
     Disk.writeFile (Path.Combine(Config.outputDir, page.Link)) finalHtmlContent
@@ -170,7 +201,7 @@ let createIndexPage (header: string) (footer: string) (articles: Page list) =
         """
 
     let canonicalUrl = baseUrl + "/"
-    let frontPageHtmlContent = generateFinalHtml (head "" Config.siteDescription canonicalUrl "website") header footer content highlightingScript
+    let frontPageHtmlContent = generateFinalHtml Config.defaultLang (head "" Config.siteDescription canonicalUrl "website") header footer content highlightingScript
 
     Disk.writeFile (Path.Combine(Config.outputDir, "index.html")) frontPageHtmlContent
 
@@ -187,7 +218,7 @@ let createNotFoundPage (header: string) (footer: string) =
 
     let baseTag = $"""<base href="{baseUrl}/">"""
     let headContent = baseTag + head (" - " + Config.notFoundTitle) "" $"{baseUrl}/404.html" "website"
-    let finalHtmlContent = generateFinalHtml headContent header footer content highlightingScript
+    let finalHtmlContent = generateFinalHtml Config.defaultLang headContent header footer content highlightingScript
 
     Disk.writeFile (Path.Combine(Config.outputDir, "404.html")) finalHtmlContent
 
