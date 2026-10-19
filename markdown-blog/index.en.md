@@ -13,7 +13,7 @@ We have been doing this for a while, and we are looking for people who want to d
 <div class="contact">
 <img class="contact-qr" src="images/wechat-qr.jpg" alt="WeChat QR code" width="150">
 <div class="contact-text">
-<p><strong>WeChat</strong> scan to add us</p>
-<p><strong>bindeep.cn</strong> binforge · intelligent decompilation and vulnerability analysis platform</p>
+<p><strong>WeChat Official Account</strong></p>
+<p><strong><a href="https://bindeep.cn/">bindeep.cn</a></strong> binforge · intelligent decompilation and vulnerability analysis platform</p>
 </div>
 </div>
