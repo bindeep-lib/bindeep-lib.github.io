@@ -275,7 +275,7 @@ let createIndexPage (header: string) (footer: string) (lang: string) (articles: 
     let canonicalUrl = $"{baseUrl}/{lang}/"
     let feedUrl = $"{baseUrl}/{lang}/feed.xml"
     let baseTag = $"""<base href="{baseUrl}/">"""
-    let headContent = baseTag + head lang feedUrl "" canonicalUrl "website"
+    let headContent = baseTag + head lang feedUrl "" "" canonicalUrl "website"
 
     let finalHtml = generateFinalHtml lang headContent header footer content highlightingScript
 

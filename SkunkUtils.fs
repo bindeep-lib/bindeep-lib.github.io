@@ -1,5 +1,10 @@
 module SkunkUtils
 
+// F#'s implicit `open System` only applies when a file does NOT begin with a
+// namespace or module declaration. This one does, so `String` must be opened
+// explicitly or every `String.IsNullOrEmpty` / `String.Join` here is FS0039.
+open System
+
 module Disk =
     open System.IO
 
@@ -109,7 +114,7 @@ module FrontMatter =
                         match l.IndexOf(':') with
                         | -1 -> None
                         | i -> Some(l.Substring(0, i).Trim().ToLowerInvariant(), l.Substring(i + 1).Trim()))
-                    |> Map.ofList
+                    |> Map.ofArray
                 let get k = fields |> Map.tryFind k
                 // A closed block holding no `key: value` line is a horizontal rule
                 // that happens to be followed by another one, not front matter.
