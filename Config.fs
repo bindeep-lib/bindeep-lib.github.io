@@ -12,7 +12,7 @@ let str (lang: string) (zh: string) (en: string) =
 
 let langName (lang: string) =
     languages
-    |> List.tryPick (fun (code, name) -> if code = lang then Some name)
+    |> List.tryPick (fun (code, name) -> if code = lang then Some name else None)
     |> Option.defaultValue lang
 
 // --- Site metadata ---
@@ -57,4 +57,4 @@ let outputAssetsDir = Path.Combine(outputDir, "assets")
 let scriptsDir = Path.Combine(sourceDir, "scripts")
 let outputScriptsDir = Path.Combine(outputDir, "scripts")
 
-let frontPageFileName lang = $"index.{lang}.md"
+let frontPageFileName (lang: string) = $"index.{lang}.md"
