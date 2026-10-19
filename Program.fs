@@ -39,7 +39,7 @@ let main _ =
     createNotFoundPage header footer
     linkedPages |> List.iter (createPage header footer)
 
-    createRssFeed articles
+    Config.languages |> List.iter (fun (lang, _) -> createRssFeed lang articles)
     createSitemap (articles @ otherPages)
 
     Disk.copyFolderToOutput Config.fontsDir Config.outputFontsDir

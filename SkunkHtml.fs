@@ -327,13 +327,18 @@ let private toRssDate (date: string) =
     | true, parsed -> parsed.ToString("R")
     | _ -> date
 
-let createRssFeed (articles: Page list) =
+/// One feed per language: a subscriber following /en/feed.xml gets only English
+/// posts. The default language's feed is ALSO written to the site root, because
+/// most readers auto-discover `/feed.xml` and a root 404 would silently break
+/// subscription for everyone not following a link by hand.
+let createRssFeed (lang: string) (articles: Page list) =
     let authorElement =
         if String.IsNullOrWhiteSpace(Config.siteAuthor) then ""
         else $"    <managingEditor>{Xml.escape Config.siteAuthor}</managingEditor>\n"
 
     let items =
         articles
+        |> List.filter (fun article -> article.Lang = lang)
         |> List.map (fun article ->
             let pubDateElement =
                 match article.Date with
@@ -357,17 +362,21 @@ let createRssFeed (articles: Page list) =
         + "<rss version=\"2.0\" xmlns:atom=\"http://www.w3.org/2005/Atom\">\n"
         + "  <channel>\n"
         + $"    <title>{Xml.escape Config.siteTitle}</title>\n"
-        + $"    <link>{baseUrl}</link>\n"
-        + $"    <description>{Xml.escape Config.siteDescription}</description>\n"
-        + $"    <language>{Config.siteLanguage}</language>\n"
+        + $"    <link>{baseUrl}/{lang}/</link>\n"
+        + $"    <description>{Xml.escape (Config.siteDescription lang)}</description>\n"
+        + $"    <language>{lang}</language>\n"
         + $"    <lastBuildDate>{lastBuildDate}</lastBuildDate>\n"
         + authorElement
-        + $"    <atom:link href=\"{baseUrl}/feed.xml\" rel=\"self\" type=\"application/rss+xml\" />\n"
+        + $"    <atom:link href=\"{baseUrl}/{lang}/feed.xml\" rel=\"self\" type=\"application/rss+xml\" />\n"
         + items + "\n"
         + "  </channel>\n"
         + "</rss>"
 
-    Disk.writeFile (Path.Combine(Config.outputDir, "feed.xml")) feed
+    Disk.writeFile (Path.Combine(Config.outputDir, lang, "feed.xml")) feed
+
+    // Root feed mirrors the default language for reader auto-discovery.
+    if lang = Config.defaultLang then
+        Disk.writeFile (Path.Combine(Config.outputDir, "feed.xml")) feed
 
 // --- Sitemap Generation ---
 let createSitemap (pages: Page list) =
@@ -384,12 +393,21 @@ let createSitemap (pages: Page list) =
             + "  </url>")
         |> String.concat "\n"
 
+    // Each language home gets its own entry. The bare site root is deliberately
+    // absent: it is a redirect page whose canonical points at the default
+    // language home, so listing it would tell crawlers two pages are the same.
+    let homeEntries =
+        Config.languages
+        |> List.map (fun (lang, _) ->
+            "  <url>\n"
+            + $"    <loc>{baseUrl}/{lang}/</loc>\n"
+            + "  </url>")
+        |> String.concat "\n"
+
     let sitemap =
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
         + "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n"
-        + "  <url>\n"
-        + $"    <loc>{baseUrl}/</loc>\n"
-        + "  </url>\n"
+        + homeEntries + "\n"
         + entries + "\n"
         + "</urlset>"
 
