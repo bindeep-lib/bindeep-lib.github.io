@@ -107,6 +107,9 @@ section  文章  → 1 条
 
 ## 7. 需要你确认的点
 
+> **状态：两项均已确认并实施**（① 取 c 表格无衬线、② 放指标并标注口径）。
+> 实施细节与第三项计划外新增见第 10 节。
+
 **① 衬线字对长文的影响**
 
 ink 主题设 `--font-family: Georgia, "Noto Serif", serif`，`styles.css:64` 的 `body` 会消费它，
@@ -136,12 +139,17 @@ ink 主题设 `--font-family: Georgia, "Noto Serif", serif`，`styles.css:64` �
 
 本项目无 dotnet、无测试工程，验证仍是「push → Actions → curl 线上产物」：
 
-1. `scripts/verify.sh` 全绿（现有 12 个 URL 不变）
+1. `scripts/verify.sh` 全绿（13 个 URL + 9 条内容断言）
 2. 中文首页与英文首页结构一致（区块顺序、CSS 类名）
 3. 作品卡与联系方式在两版都可见
 4. 二维码在 `/zh/` 与 `/en/` 下均 200（`<base>` 生效）
 5. 文章页未被破坏（衬线字体下表格仍可读，需肉眼确认）
 6. 无中文残留（英文版）、无模板作者残留
+
+> **第 5 项 curl 查不出来**，必须人眼判断。给用户的即时 A/B 方法：
+> DevTools Console 执行
+> `document.documentElement.style.setProperty('--font-family','sans-serif')`
+> 即刻变回改动前的无衬线，刷新即恢复 —— 不需要重新部署。
 
 ## 9. 不做的事
 
@@ -220,3 +228,30 @@ ink 主题给 `blockquote` 加了 `font-style: italic`。文章里有 **69 处 b
 `Program.fs` **无需改动** —— `createIndexPage` 与 `createPage` 各自已经算好了
 正确的切换器数据（前者 `homeLinks`，后者 `page.Translations`），原先只是都塞进了
 `<main>` 的 `content`；现在把它作为参数交给 `generateFinalHtml` 即可。
+
+## 11. 后续改动（commit `d4aebad`）
+
+**`scripts/verify.sh` 从「URL 可达性」升级为「结构回归检查」**
+
+原先 12 个 URL 只断言 HTTP 200 —— 但本项目刚把导航整个重排过一遍，
+它对「切换器还在不在 nav 里」「有没有 nav 嵌套 nav」这类改动完全无感，
+而后者是真实发生过的一次回归（`3cc4168`）。
+
+新增 9 条断言，只打**CSS 依赖的结构钩子**（`work-card`、`contact-qr`、
+`nav-switcher` 等），**不碰文案** —— 文案会改，结构钩子一改就会让对应样式失效。
+
+断言的**职责是分工的**，单条覆盖不全，组合才完整：
+
+| 断言 | 职责 | 单独抓不到 |
+|---|---|---|
+| `<nav>` 计数 == 1 | nav 嵌套 nav | 切换器退回 `<main>` |
+| `nav-switcher` 在 `<nav>` 内 | 切换器退回 `<main>` | nav 嵌套 |
+| 首页结构钩子 | 作品卡/联系方式被删 | 导航问题 |
+
+已在 6 种负样本上自检（嵌套 nav、切换器退回 main 的 span/nav 两种形态、
+作品卡被删、容器类名被改、切换器丢失），全部抓到红；正样本用真实线上页面。
+
+**`links` 页更正站点标签**
+
+此前把 `bindeep.cn` 标为「主页」、把 `bindeep-lib.github.io` 标为「站点」——
+而实际 `bindeep.cn` 是产品站。改用能对上的标签，并补上测试数据集链接。
