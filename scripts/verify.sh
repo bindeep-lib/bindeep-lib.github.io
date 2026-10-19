@@ -9,6 +9,9 @@
 # <base href="{siteBaseUrl}/"> 解析到站点根。因此本站【不存在】
 # /zh/css/styles.css 这类 URL —— 浏览器请求的永远是 /css/styles.css。
 # 不要用 /<lang>/<资源> 形式断言资源可达，那是错误的期望。
+#
+# 英文文章 /en/<slug>.html 不在默认集合里：它需要 markdown-blog/<date>.en.md
+# 存在，即中文文章的英文译文。补上译文后把这一行加回来。
 set -uo pipefail
 BASE="${BASE:-https://bindeep-lib.github.io}"
 
@@ -21,8 +24,9 @@ else
     "$BASE/en/"                    # 英文首页
     "$BASE/css/styles.css"         # 资源在根，由 <base> 从 /zh/ 解析到此
     "$BASE/images/wechat-qr.jpg"   # 二维码
-    "$BASE/zh/decompiled-code-why-ida-ghidra.html"   # 中文文章（需 front-matter slug）
-    "$BASE/en/decompiled-code-why-ida-ghidra.html"   # 英文文章（同 slug）
+    "$BASE/zh/decompiled-code-why-ida-ghidra.html"   # 中文文章（front-matter slug）
+    "$BASE/zh/links.html"                             # 中文链接页
+    "$BASE/en/links.html"                             # 英文链接页
     "$BASE/zh/feed.xml"
     "$BASE/en/feed.xml"
     "$BASE/feed.xml"
