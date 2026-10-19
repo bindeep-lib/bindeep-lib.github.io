@@ -1,21 +1,40 @@
-/* SkunkHTML default tweaks
-   Dark mode works automatically because data-color-mode="user" is set on <html>.
-   For alternative themes, see the themes/ folder: theme-ocean.css, theme-terminal.css, theme-ink.css */
+/* SkunkHTML Theme: Ink
+   A warm, newspaper-inspired reading theme with serif typography.
+   Respects user's color scheme preference.
+   To use: replace the contents of css/tweaks.css with this file. */
 
 :root {
     --width-content: 800px;
-    --color-link: #878BEE;
-    --color-table: #878BEE;
-    --color-accent: #878BEE15;
+    --color-accent: #d4a37415;
+    --color-bg: #faf8f5;
+    --color-bg-secondary: #eae6e0;
+    --color-link: #a0522d;
+    --color-secondary: #8b0000;
+    --color-secondary-accent: #8b00000b;
+    --color-shadow: #ddd8d0;
+    --color-table: #a0522d;
+    --color-text: #2c2416;
+    --color-text-secondary: #6b5c4d;
+    --color-scrollbar: #c4b5a5;
+    --font-family: Georgia, "Times New Roman", "Noto Serif", serif;
 }
+
 @media (prefers-color-scheme: dark) {
     :root[data-color-mode="user"] {
-        --color-bg: #231D29;
-        --color-link: #8F8CEF;
-        --color-table: #8F8CEF;
-        --color-accent: #8F8CEF4f;
+        --color-accent: #d4a37426;
+        --color-bg: #1a1610;
+        --color-bg-secondary: #2a241c;
+        --color-link: #d4a374;
+        --color-secondary: #e87070;
+        --color-secondary-accent: #e8707015;
+        --color-shadow: #0d0b08;
+        --color-table: #d4a374;
+        --color-text: #d4cdc4;
+        --color-text-secondary: #9a8e80;
+        --color-scrollbar: #3a3228;
     }
 }
+
 nav a img {
     border-style: outset;
     border-color: var(--color-link);
@@ -30,10 +49,11 @@ blockquote p {
     line-height: var(--line-height);
     text-align: var(--justify-normal);
     border-right: none;
-    border-left: 0.25rem solid var(--color-accent);
+    border-left: 0.25rem solid var(--color-secondary);
     padding: 0 0 0 1rem;
     margin-left: 0;
     max-width: 100%;
+    font-style: italic;
 }
 
 blockquote p {
@@ -81,4 +101,128 @@ table th[align="center"] {
 table td[align="right"],
 table th[align="right"] {
     text-align: right !important;
+}
+
+/* ===================================================================
+   bindeep lab — site additions
+   Everything above this line is themes/theme-ink.css verbatim. The
+   rules below are ours: the home page blocks, plus two readability
+   overrides that the ink theme forces on us site-wide.
+   =================================================================== */
+
+:root {
+    --font-family-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+}
+
+/* Ink sets --font-family to Georgia/"Noto Serif"/serif, and styles.css
+   line 64 hands it to body, so the *whole* site becomes serif. That is
+   fine for Chinese prose (宋体 is the traditional body face) but not for
+   the article's 24 tables of figures and percentages, which are scanned
+   by shape, not read. Pin tables back to the sans stack. */
+table {
+    font-family: var(--font-family-sans);
+}
+
+/* Same reasoning, harder case. The article uses blockquote 69 times, and
+   every one of them is a bolded pull-quote — the sentence we want the
+   reader to keep ("这不是能力高低，是产品定位不同"). Ink renders them
+   italic; browsers fake CJK italics by slanting the glyphs, which is
+   both harder to read and worst on the exact lines we most want legible. */
+blockquote,
+blockquote p {
+    font-style: normal;
+}
+
+/* --- home page: work card ---------------------------------------- */
+
+.work-card {
+    border: 1px solid var(--color-bg-secondary);
+    border-left: 3px solid var(--color-link);
+    border-radius: 4px;
+    padding: 1rem 1.25rem;
+    margin: 1.75rem 0;
+}
+
+.work-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+}
+
+.work-name {
+    font-size: 1.15rem;
+    font-weight: bold;
+}
+
+.work-link {
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.work-card p {
+    margin: 0.6rem 0 0;
+}
+
+/* The numbers carry the claim, so they get their own line and the
+   muted colour: present enough to quote, quiet enough not to shout
+   over the work's name. */
+.work-metrics {
+    color: var(--color-text-secondary);
+    font-size: 0.92rem;
+}
+
+/* --- home page: contact block ------------------------------------ */
+
+.contact {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin: 1.5rem 0 2.5rem;
+}
+
+/* The QR is a photograph, so in dark mode it would float on the dark
+   background with no edge. A white mat keeps it scannable. */
+.contact-qr {
+    flex: none;
+    background: #fff;
+    border: 1px solid var(--color-bg-secondary);
+    border-radius: 4px;
+    padding: 4px;
+}
+
+.contact-text p {
+    margin: 0.35rem 0;
+}
+
+.contact-text strong {
+    white-space: nowrap;
+}
+
+/* --- nav: language switcher moved into the nav bar --------------- */
+
+/* styles.css appends `.lang-switch { margin: 0 0 1.5rem 0 }` for the
+   switcher that used to sit in <main>. In the nav that bottom margin
+   would stretch the bar, so cancel it here. */
+.nav-switcher .lang-switch {
+    margin: 0;
+}
+
+.nav-switcher .lang-switch a {
+    margin-right: 0;
+}
+
+/* --- narrow screens --------------------------------------------- */
+
+@media only screen and (max-width: 40rem) {
+    .work-head {
+        flex-wrap: wrap;
+        gap: 0.25rem 1rem;
+    }
+
+    .contact {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
 }

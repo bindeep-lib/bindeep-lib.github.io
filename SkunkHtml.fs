@@ -32,17 +32,21 @@ let private giscusScript =
     Path.Combine(Config.htmlDir, "script_giscus.html")
     |> Disk.readFile
 
-let generateFinalHtml (lang: string) (head: string) (header: string) (footer: string) (content: string) (script: string) =
+let generateFinalHtml (lang: string) (head: string) (header: string) (footer: string) (switcher: string) (content: string) (script: string) =
     // The header template carries {{lang}} placeholders because it is a static
     // file that cannot know which language is being rendered. A placeholder that
     // stops matching would otherwise sail through and print a literal
     // "{{lang}}" in the navigation, so a leftover brace fails the build instead.
+    // {{nav-switcher}} is filled by the caller rather than derived from `lang`:
+    // an article page must offer the other translations of *that* article, while
+    // a home page must offer the other language's home. Both callers already
+    // build that list, so it travels as a parameter instead of being guessed here.
     let renderedHeader =
         header
         |> fun t -> t.Replace("{{lang}}", lang)
         |> fun t -> t.Replace("{{site-name}}", Config.siteTitle)
-        |> fun t -> t.Replace("{{home-text}}", Config.str lang "首页" "Home")
         |> fun t -> t.Replace("{{links-text}}", Config.str lang "链接" "Links")
+        |> fun t -> t.Replace("{{nav-switcher}}", switcher)
 
     if renderedHeader.Contains "{{" then
         failwithf "Unreplaced placeholder in html/header.html while rendering lang '%s'. Template contains: %s" lang header
@@ -208,6 +212,14 @@ let languageSwitcher (lang: string) (links: (string * string) list) =
 
     $"<nav class=\"lang-switch\">{items}</nav>"
 
+/// The switcher for pages that have no article translations to point at: it
+/// offers the other language's *home*. Shared by the home pages, the root
+/// redirect and the 404 page so the three cannot drift apart.
+let homeLanguageSwitcher (lang: string) =
+    Config.languages
+    |> List.map (fun (code, _) -> code, $"{code}/")
+    |> languageSwitcher lang
+
 /// Each article page declares every language it exists in via `hreflang`
 /// alternates, including its own — a page must list itself for the set to be
 /// complete. `Translations` is filled by `linkTranslations` and contains the
@@ -244,7 +256,7 @@ let createPage (header: string) (footer: string) (page: Page) =
 
     let switcher = languageSwitcher page.Lang page.Translations
     let finalHtmlContent =
-        generateFinalHtml page.Lang headContent header footer (switcher + htmlContent) highlightingScript
+        generateFinalHtml page.Lang headContent header footer switcher htmlContent highlightingScript
 
     printfn $"Processing {Path.GetFileName page.SourcePath} ->"
     Disk.writeFile (Path.Combine(Config.outputDir, page.Link)) finalHtmlContent
@@ -277,14 +289,11 @@ let createIndexPage (header: string) (footer: string) (lang: string) (articles: 
             $"""<li>{datePrefix}<a href="{article.Link}">{Xml.escape article.Title}</a></li>""")
         |> String.concat "\n"
 
-    // The two language homes, so a reader landing on /zh/ can reach /en/ and back.
-    let homeLinks = Config.languages |> List.map (fun (code, _) -> code, $"{code}/")
-    let switcher = languageSwitcher lang homeLinks
+    let switcher = homeLanguageSwitcher lang
 
     let content =
         $"""
         {frontPageContentHtml}
-        {switcher}
         <section class="publications">
             <h2>{Config.blogEntriesHeading lang}</h2>
             <ul>
@@ -298,7 +307,7 @@ let createIndexPage (header: string) (footer: string) (lang: string) (articles: 
     let baseTag = $"""<base href="{baseUrl}/">"""
     let headContent = baseTag + head lang feedUrl "" "" canonicalUrl "website"
 
-    let finalHtml = generateFinalHtml lang headContent header footer content highlightingScript
+    let finalHtml = generateFinalHtml lang headContent header footer switcher content highlightingScript
 
     printfn $"Processing index.{lang} ->"
     Disk.writeFile (Path.Combine(Config.outputDir, lang, "index.html")) finalHtml
@@ -318,7 +327,7 @@ let createRootRedirect (header: string) (footer: string) =
         $"""<meta http-equiv="refresh" content="0; url={target}">
 <link rel="canonical" href="{baseUrl}{target}">"""
 
-    let finalHtml = generateFinalHtml Config.defaultLang headContent header footer content highlightingScript
+    let finalHtml = generateFinalHtml Config.defaultLang headContent header footer (homeLanguageSwitcher Config.defaultLang) content highlightingScript
 
     printfn "Processing root redirect ->"
     Disk.writeFile (Path.Combine(Config.outputDir, "index.html")) finalHtml
@@ -336,7 +345,7 @@ let createNotFoundPage (header: string) (footer: string) =
 
     let baseTag = $"""<base href="{baseUrl}/">"""
     let headContent = baseTag + head Config.defaultLang $"{baseUrl}/feed.xml" (" - " + (Config.notFoundTitle Config.defaultLang)) "" $"{baseUrl}/404.html" "website"
-    let finalHtmlContent = generateFinalHtml Config.defaultLang headContent header footer content highlightingScript
+    let finalHtmlContent = generateFinalHtml Config.defaultLang headContent header footer (homeLanguageSwitcher Config.defaultLang) content highlightingScript
 
     Disk.writeFile (Path.Combine(Config.outputDir, "404.html")) finalHtmlContent
 
