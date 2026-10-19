@@ -187,21 +187,43 @@ let languageSwitcher (lang: string) (links: (string * string) list) =
 
     $"<nav class=\"lang-switch\">{items}</nav>"
 
+/// Each article page declares every language it exists in via `hreflang`
+/// alternates, including its own — a page must list itself for the set to be
+/// complete. `Translations` is filled by `linkTranslations` and contains the
+/// page itself, which is why `languageSwitcher` marks the current one active
+/// instead of filtering it out.
 let createPage (header: string) (footer: string) (page: Page) =
     let canonicalUrl = $"{baseUrl}/{page.Link}"
-    let markdownContent = File.ReadAllText(page.SourcePath)
+    // Fully qualified on purpose: opening `SkunkUtils.FrontMatter` here would make
+    // every unannotated `.Slug`/`.Lang` in this file an ambiguous-label error.
+    let fm = FrontMatter.parse (File.ReadAllText page.SourcePath)
 
     let htmlContent, ogType =
         match page.Date with
-        | None -> Markdown.ToHtml(markdownContent), "website"
+        | None -> Markdown.ToHtml(fm.Body), "website"
         | Some date ->
             let publicationDate =
-                $"""<p class="publication-date">{Config.publishedOnText} <time datetime="{date}">{date}</time></p>"""
-            let articleHtml = Markdown.ToHtml(markdownContent + "\n\n" + publicationDate + "\n\n")
+                $"""<p class="publication-date">{Config.publishedOnText page.Lang} <time datetime="{date}">{date}</time></p>"""
+            let articleHtml = Markdown.ToHtml(fm.Body + "\n\n" + publicationDate + "\n\n")
             articleHtml + giscusScript, "article"
 
+    let alternates =
+        page.Translations
+        |> List.sortBy fst
+        |> List.map (fun (code, link) ->
+            $"""<link rel="alternate" hreflang="{code}" href="{baseUrl}/{link}">""")
+        |> String.concat "\n"
+
+    let feedUrl = $"{baseUrl}/{page.Lang}/feed.xml"
+    // The <base> tag is what makes the header's assets resolve from /<lang>/<slug>.html.
+    let headContent =
+        $"""<base href="{baseUrl}/">
+{alternates}"""
+        + head page.Lang feedUrl (" - " + page.Title) page.Description canonicalUrl ogType
+
+    let switcher = languageSwitcher page.Lang page.Translations
     let finalHtmlContent =
-        generateFinalHtml page.Lang (head page.Lang $"{baseUrl}/{page.Lang}/feed.xml" (" - " + page.Title) page.Description canonicalUrl ogType) header footer htmlContent highlightingScript
+        generateFinalHtml page.Lang headContent header footer (switcher + htmlContent) highlightingScript
 
     printfn $"Processing {Path.GetFileName page.SourcePath} ->"
     Disk.writeFile (Path.Combine(Config.outputDir, page.Link)) finalHtmlContent
