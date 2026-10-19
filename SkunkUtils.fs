@@ -108,7 +108,7 @@ module FrontMatter =
                     |> Array.choose (fun l ->
                         match l.IndexOf(':') with
                         | -1 -> None
-                        | i -> Some(l.Substring(0, i).Trim().ToLowerInvariant(), l.Substring(i + 1).Trim())))
+                        | i -> Some(l.Substring(0, i).Trim().ToLowerInvariant(), l.Substring(i + 1).Trim()))
                     |> Map.ofList
                 let get k = fields |> Map.tryFind k
                 // A closed block holding no `key: value` line is a horizontal rule
