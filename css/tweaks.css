@@ -137,33 +137,6 @@ blockquote p {
     font-style: normal;
 }
 
-/* --- reading column: prose limited, tables full width --------------- */
-
-/* The column is 1200px wide (see --width-content above) so that the
-   article's data tables fit without horizontal scrolling. Prose is a
-   different matter: a paragraph read across 1200px is a long line of
-   text that the eye cannot track back from. Cap paragraphs, list items
-   and headings at a comfortable measure (~46rem / 736px) and leave the
-   rest of the column to the tables and code blocks. */
-main p,
-main li,
-main h1,
-main h2,
-main h3,
-main h4 {
-    max-width: 46rem;
-}
-
-/* Tables and code blocks are the reason the column is this wide: keep
-   them on the full column instead of letting them inherit the prose
-   limit above. */
-main table,
-main pre,
-main pre code {
-    max-width: 100%;
-    width: auto;
-}
-
 /* --- home page: work card ---------------------------------------- */
 
 .work-card {
