@@ -14,6 +14,7 @@
 <img class="contact-qr" src="images/wechat-qr.jpg" alt="微信二维码" width="150">
 <div class="contact-text">
 <p><strong>微信公众号</strong></p>
+<p><strong>邮箱</strong> <a href="mailto:bindeep01@163.com">bindeep01@163.com</a></p>
 <p><strong><a href="https://bindeep.cn/">bindeep.cn</a></strong> binforge · 智能反编译与漏洞分析平台</p>
 </div>
 </div>

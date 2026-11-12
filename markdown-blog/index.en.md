@@ -14,6 +14,7 @@ We have been doing this for a while, and we are looking for people who want to d
 <img class="contact-qr" src="images/wechat-qr.jpg" alt="WeChat QR code" width="150">
 <div class="contact-text">
 <p><strong>WeChat Official Account</strong></p>
+<p><strong>Email</strong> <a href="mailto:bindeep01@163.com">bindeep01@163.com</a></p>
 <p><strong><a href="https://bindeep.cn/">bindeep.cn</a></strong> binforge · intelligent decompilation and vulnerability analysis platform</p>
 </div>
 </div>
