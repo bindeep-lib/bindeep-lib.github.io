@@ -7,8 +7,8 @@
     /* Reading column width. styles.css ships 1080px, the themes shipped
        800px; the site's articles are table-heavy (screenshots of
        percentages, side-by-side comparisons) and were cramped at 800px,
-       so the column is 50% wider (800 -> 1200). */
-    --width-content: 1200px;
+       so the column is 20% wider (800 -> 960). */
+    --width-content: 960px;
     --color-accent: #d4a37415;
     --color-bg: #faf8f5;
     --color-bg-secondary: #eae6e0;
@@ -116,6 +116,17 @@ table th[align="right"] {
 
 :root {
     --font-family-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+}
+
+/* --- global type scale --------------------------------------------- */
+
+/* Every size on this site is relative: the UA defaults for paragraphs,
+   list items and table cells are em-based, and styles.css / tweaks.css
+   use rem. The root font size is therefore the single knob for the whole
+   type scale - bump it and body text, tables, code blocks and the home
+   page blocks all grow together (16px -> 18px, +12.5%). */
+html {
+    font-size: 18px;
 }
 
 /* Ink sets --font-family to Georgia/"Noto Serif"/serif, and styles.css

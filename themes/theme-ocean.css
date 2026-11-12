@@ -4,9 +4,9 @@
    or rename this file to tweaks.css and place it in css/ */
 
 :root {
-    /* Reading column width: 50% wider than the original 800px
-       (800 -> 1200), so wide tables and screenshots fit comfortably. */
-    --width-content: 1200px;
+    /* Reading column width: 20% wider than the original 800px
+       (800 -> 960), so wide tables and screenshots fit comfortably. */
+    --width-content: 960px;
     --color-accent: #0a84ff15;
     --color-bg: #fafbfc;
     --color-bg-secondary: #e1e4e8;
@@ -18,6 +18,12 @@
     --color-text: #24292e;
     --color-text-secondary: #586069;
     --color-scrollbar: #c8d1d9;
+}
+
+/* Root font size: the whole type scale is em/rem based, so this one
+   value scales body text, tables and code blocks together (16 -> 18px). */
+html {
+    font-size: 18px;
 }
 
 @media (prefers-color-scheme: dark) {

@@ -7,9 +7,9 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-    /* Reading column width: 50% wider than the original 800px
-       (800 -> 1200), so wide tables and screenshots fit comfortably. */
-    --width-content: 1200px;
+    /* Reading column width: 20% wider than the original 800px
+       (800 -> 960), so wide tables and screenshots fit comfortably. */
+    --width-content: 960px;
     --color-accent: #2ea04315;
     --color-bg: #f6f8f0;
     --color-bg-secondary: #e2e6d9;
@@ -22,6 +22,12 @@
     --color-text-secondary: #57606a;
     --color-scrollbar: #8dc572;
     --font-family: "JetBrains Mono", "Courier New", monospace;
+}
+
+/* Root font size: the whole type scale is em/rem based, so this one
+   value scales body text, tables and code blocks together (16 -> 18px). */
+html {
+    font-size: 18px;
 }
 
 @media (prefers-color-scheme: dark) {

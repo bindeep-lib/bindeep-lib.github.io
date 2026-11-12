@@ -4,9 +4,9 @@
    To use: replace the contents of css/tweaks.css with this file. */
 
 :root {
-    /* Reading column width: 50% wider than the original 800px
-       (800 -> 1200), so wide tables and screenshots fit comfortably. */
-    --width-content: 1200px;
+    /* Reading column width: 20% wider than the original 800px
+       (800 -> 960), so wide tables and screenshots fit comfortably. */
+    --width-content: 960px;
     --color-accent: #d4a37415;
     --color-bg: #faf8f5;
     --color-bg-secondary: #eae6e0;
@@ -19,6 +19,12 @@
     --color-text-secondary: #6b5c4d;
     --color-scrollbar: #c4b5a5;
     --font-family: Georgia, "Times New Roman", "Noto Serif", serif;
+}
+
+/* Root font size: the whole type scale is em/rem based, so this one
+   value scales body text, tables and code blocks together (16 -> 18px). */
+html {
+    font-size: 18px;
 }
 
 @media (prefers-color-scheme: dark) {
