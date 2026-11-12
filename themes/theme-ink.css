@@ -4,7 +4,9 @@
    To use: replace the contents of css/tweaks.css with this file. */
 
 :root {
-    --width-content: 800px;
+    /* Reading column width: 50% wider than the original 800px
+       (800 -> 1200), so wide tables and screenshots fit comfortably. */
+    --width-content: 1200px;
     --color-accent: #d4a37415;
     --color-bg: #faf8f5;
     --color-bg-secondary: #eae6e0;

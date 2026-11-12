@@ -7,7 +7,9 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-    --width-content: 800px;
+    /* Reading column width: 50% wider than the original 800px
+       (800 -> 1200), so wide tables and screenshots fit comfortably. */
+    --width-content: 1200px;
     --color-accent: #2ea04315;
     --color-bg: #f6f8f0;
     --color-bg-secondary: #e2e6d9;

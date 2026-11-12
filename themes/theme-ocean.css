@@ -4,7 +4,9 @@
    or rename this file to tweaks.css and place it in css/ */
 
 :root {
-    --width-content: 800px;
+    /* Reading column width: 50% wider than the original 800px
+       (800 -> 1200), so wide tables and screenshots fit comfortably. */
+    --width-content: 1200px;
     --color-accent: #0a84ff15;
     --color-bg: #fafbfc;
     --color-bg-secondary: #e1e4e8;
